@@ -1,13 +1,20 @@
+import warnings
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.pylab import mpl
 from numpy.linalg import LinAlgError
+from scipy import signal
 from scipy.fftpack import fft, ifft
 from sklearn.cluster import AgglomerativeClustering
+
+warnings.filterwarnings('ignore')
 
 
 class SSICOV(object):
     def __init__(self, dt, min_order=2, max_order=30, eps_freq=1e-2, eps_zeta=4e-2, eps_mac=5e-3, eps_cluster=.25,
-                 methods=1):
+                 methods=1, make_plot=False):
         self.min_order = min_order
         self.max_order = max_order
         self.dt = dt
@@ -16,7 +23,7 @@ class SSICOV(object):
         self.eps_mac = eps_mac
         self.eps_cluster = eps_cluster
         self.methods = methods
-        self.stab_plot_data = None
+        self.make_plot = make_plot
 
     def fit(self, data):
         Nyy, N = data.shape
@@ -50,6 +57,10 @@ class SSICOV(object):
             phi0 = phi1
 
         fn_s, zeta_s, phi_s, mac_s = self.get_stable_poles(fn2, zeta2, phi2, mac, stability_status)
+
+        if self.make_plot:
+            Az = data[0]
+            self.plot_stab_diag(fn2, Az, stability_status)
 
         if len(fn_s) <= 0:
             print('No stable poles found')
@@ -287,11 +298,54 @@ class SSICOV(object):
             y = 0
         return y, dummy_mac
 
+    def plot_stab_diag(self, fn, Az, stability_status):
+        fs = 1 / self.dt
+        n_poles = np.arange(self.min_order, self.max_order, 1)
+        f_f, Saz = signal.welch(Az, fs, nperseg=2 ** 12)
+        x = []
+        y = []
+        for status in range(5):
+            x_s = []
+            y_s = []
+            for i in range(len(fn)):
+                d1 = len(fn[i])
+                f = fn[i].reshape(1, d1)[0, stability_status[i] == status]
+                if len(f) > 0:
+                    x_s += f.tolist()
+                    y_s += [n_poles[i]] * len(f)
+            x.append(x_s)
+            y.append(y_s)
+
+        fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()
+        ax2.plot(f_f, np.log(Saz / max(Saz) * .001), 'b')
+        # ax2.plot(f_f, np.log10(Saz), 'b')
+        mpl.rcParams['font.sans-serif'] = ['SimHei']  # 显示中文
+        mpl.rcParams['axes.unicode_minus'] = False  # 显示负号
+        ax1.plot(x[0], y[0], 'k+', label="xx")  # new pole
+        ax1.plot(x[1], y[1], 'r.', label='Stable pole')  # stable pole
+        ax1.plot(x[2], y[2], 'g.', label='Stable freq.& MAC')  # pole with stable frequency and vector
+        ax1.plot(x[3], y[3], 'g.', label='Stable freq.& damp')  # pole with stable frequency and damping
+        ax1.plot(x[4], y[4], 'g.', label='Stable freq')  # pole with stable frequency
+
+        plt.title('Stabilization Diagram')
+        plt.xlabel('Frequency(Hz)')
+        ax1.set_ylabel('Model Order')
+        # ax1.ylim([0, self.max_order])
+        ax1.set_ylim([0, self.max_order])
+        ax2.set_ylabel('CMIF Magnitude(dB)')
+        plt.xlim(f_f[0], 2)
+        # plt.xlim([f_f[0], f_f[-1]])
+        plt.grid()
+        # plt.legend(loc=(0.64, 0.1))
+        plt.show()
+        plt.close()
+
 
 if __name__ == '__main__':
     data = pd.read_csv(r'beamdata1.csv', header=None)
     print(data.shape)
     print(data.head())
     data = data.values
-    model = SSICOV(dt=.01)
+    model = SSICOV(dt=.01, make_plot=True)
     model.fit(data)
