@@ -94,9 +94,9 @@ class SSICOV(object):
                 sub_IRF.append(h0[0:M])
             IRF.append(sub_IRF)
         IRF = np.array(IRF)
-        if d1 == 1:
-            IRF = IRF.squeeze()
-            IRF = IRF / IRF[1]
+        # if d1 == 1:
+        #     IRF = IRF.squeeze()
+        #     IRF = IRF / IRF[1]
         return IRF
 
     def block_hankel(self, h):
