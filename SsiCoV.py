@@ -13,15 +13,16 @@ warnings.filterwarnings('ignore')
 
 
 class SSICOV(object):
-    def __init__(self, dt, min_order=2, max_order=30, eps_freq=1e-2, eps_zeta=4e-2, eps_mac=5e-3, eps_cluster=.25,
-                 methods=1, make_plot=False):
+    def __init__(self, dt, min_order=2, max_order=30, max_clusters=None, eps_freq=1e-2, eps_zeta=4e-2, eps_mac=5e-3,
+                 eps_cluster=.25, methods=1, make_plot=False):
+        self.max_clusters = max_clusters
+        self.eps_cluster = eps_cluster
         self.min_order = min_order
         self.max_order = max_order
         self.dt = dt
         self.eps_freq = eps_freq
         self.eps_zeta = eps_zeta
         self.eps_mac = eps_mac
-        self.eps_cluster = eps_cluster
         self.methods = methods
         self.make_plot = make_plot
 
@@ -78,7 +79,7 @@ class SSICOV(object):
         for i in range(len(fn3)):
             fn.append(np.mean(fn3[i]))
             zeta.append(np.mean(zeta3[i]))
-            phi.append(np.mean(phi3[i], axis=1))
+            phi.append(np.mean(phi3[i], axis=0))
 
         fn = np.array(fn)
         zeta = np.array(zeta)
@@ -242,8 +243,12 @@ class SSICOV(object):
         if len(pos) == 1:
             print('linkage failed: at lease two observations are required')
             return
-        myClus = AgglomerativeClustering(linkage='single', affinity='euclidean', n_clusters=None,
-                                         distance_threshold=self.eps_cluster).fit_predict(pos)
+        if self.max_clusters is None:
+            myClus = AgglomerativeClustering(linkage='single', affinity='euclidean', n_clusters=None,
+                                             distance_threshold=self.eps_cluster).fit_predict(pos)
+        else:
+            myClus = AgglomerativeClustering(linkage='single', affinity='euclidean',
+                                             n_clusters=self.max_clusters).fit_predict(pos)
         Ncluster = np.max(myClus) + 1
         fn_c = []
         zeta_c = []
