@@ -227,10 +227,10 @@ class SSICOV(object):
         mac_s = np.array(mac_s)
 
         # Normalized mode shape
-        for r in range(phi_s.shape[1]):
-            phi_s[:, r] = phi_s[:, r] / np.max(np.abs(phi_s[:, r]))
-            if phi_s.shape[0] > 1 and (phi_s[0, r] - phi_s[1, r]) < 0:
-                phi_s[:, r] = - phi_s[:, r]
+        for r in range(phi_s.shape[0]):
+            phi_s[r, :] = phi_s[r, :] / np.max(np.abs(phi_s[r, :]))
+            if phi_s.shape[0] > 1 and (phi_s[r, 0] - phi_s[r, 1]) < 0:
+                phi_s[r, :] = - phi_s[r, :]
         return fn_s, zeta_s, phi_s, mac_s
 
     def clusterFun(self, fn, zeta, phi):
